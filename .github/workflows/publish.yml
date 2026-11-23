@@ -1,0 +1,66 @@
+name: Publish verified installers
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version of the existing draft release
+        required: true
+      mac_digest:
+        description: Expected macOS SHA-256
+        required: true
+      windows_digest:
+        description: Expected Windows SHA-256
+        required: true
+      checksums_digest:
+        description: Expected digest of the build's SHA256SUMS.txt
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: publish-downloads
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+      MAC_SUM: ${{ inputs.mac_digest }}
+      WIN_SUM: ${{ inputs.windows_digest }}
+      LIST_SUM: ${{ inputs.checksums_digest }}
+    steps:
+      - name: Check release draft and expected checksums
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          for digest in "$MAC_SUM" "$WIN_SUM" "$LIST_SUM"; do [[ "$digest" =~ ^[0-9a-f]{64}$ ]]; done
+          [[ "$(gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" == true ]]
+
+      - name: Retrieve and verify the two approved build files
+        env:
+          MAC_FILE: ${{ secrets.MAC_INSTALLER_URL }}
+          WIN_FILE: ${{ secrets.WINDOWS_INSTALLER_URL }}
+        run: |
+          set -euo pipefail
+          mac="Shimmer-v$VERSION.dmg"
+          win="Shimmer-Setup-v$VERSION.exe"
+          for url in "$MAC_FILE" "$WIN_FILE"; do [[ "$url" == https://release-assets.githubusercontent.com/* ]]; done
+          curl --silent --show-error --fail --proto '=https' --retry 3 --max-time 240 --output "$mac" "$MAC_FILE"
+          curl --silent --show-error --fail --proto '=https' --retry 3 --max-time 240 --output "$win" "$WIN_FILE"
+          printf '%s  %s\n%s  %s\n' "$MAC_SUM" "$mac" "$WIN_SUM" "$win" > SHA256SUMS.txt
+          printf '%s  SHA256SUMS.txt\n' "$LIST_SUM" | sha256sum --check
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Publish the verified assets
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          [[ "$(gh release view "$tag" -R "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" == true ]]
+          gh release upload "$tag" -R "$GITHUB_REPOSITORY" --clobber "Shimmer-$tag.dmg" "Shimmer-Setup-$tag.exe" SHA256SUMS.txt
+          gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets |
+            jq -e --arg mac "Shimmer-$tag.dmg" --arg win "Shimmer-Setup-$tag.exe" \
+              --arg m "sha256:$MAC_SUM" --arg w "sha256:$WIN_SUM" --arg l "sha256:$LIST_SUM" \
+              '(.assets|length)==3 and ([.assets[] | {key:.name,value:.digest}]|from_entries)=={($mac):$m,($win):$w,"SHA256SUMS.txt":$l}'
+          gh release edit "$tag" -R "$GITHUB_REPOSITORY" --draft=false --latest

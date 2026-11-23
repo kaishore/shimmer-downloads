@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="下载浮光 Shimmer，为 Codex 桌面应用创建本地主题。Download Shimmer for macOS and Windows.">
+<title>浮光下载 · Download Shimmer</title><style>
+:root { color-scheme:light dark; --bg:#f6f8f2; --paper:#ffffff; --fg:#17271e; --dim:#4d6154; --line:#cbd8cc; --green:#1c6545; --on:#fff; --soft:#e0efdf; --focus:#075ca5; }
+@media(prefers-color-scheme:dark) { :root { --bg:#102019; --paper:#192d22; --fg:#eef4ea; --dim:#bdcdbc; --line:#405646; --green:#a1dfac; --on:#102719; --soft:#263e2d; --focus:#8fcaff; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:1rem/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+main { width:min(50rem,100%); margin:auto; padding:0 clamp(1rem,4vw,2.5rem) 2rem; }
+header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; padding:1.2rem 0; border-bottom:1px solid var(--line); }
+.brand { display:inline-flex; align-items:center; gap:.55rem; font-weight:680; }
+.mark { display:inline-flex; align-items:center; gap:3px; height:1.6rem; width:1.6rem; padding:4px; background:var(--green); border-radius:7px; transform:rotate(-5deg); }
+.mark::before,.mark::after { content:""; display:block; border-radius:3px; width:7px; transform:skewY(-17deg); background:var(--on); }
+.mark::before { height:65%; } .mark::after { height:95%; }
+nav { display:flex; gap:.2rem; align-items:center; }
+nav a { display:inline-flex; align-items:center; min-height:2.75rem; padding:0 .55rem; font-size:.9rem; text-decoration:none; }
+nav a[aria-current] { text-decoration:underline; text-underline-offset:.28em; }
+a { color:var(--green); text-underline-offset:.2em; } a:hover { text-decoration:underline; }
+a:focus-visible { outline:3px solid var(--focus); outline-offset:4px; border-radius:4px; }
+.intro { padding:clamp(2.1rem,7vw,4rem) 0 1.5rem; }
+.version { color:var(--green); display:table; padding:.2rem .65rem; border-radius:1rem; background:var(--soft); font-size:.86rem; font-weight:650; font-variant-numeric:tabular-nums; }
+h1 { margin:.6rem 0 .35rem; font-size:clamp(2.3rem,7vw,3.6rem); line-height:1.14; letter-spacing:-.04em; }
+.intro p { max-width:43rem; margin:.7rem 0 0; color:var(--dim); font-size:1.07rem; }
+.downloads { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem; }
+article { display:flex; flex-direction:column; align-items:flex-start; padding:clamp(1.1rem,3vw,1.5rem); background:var(--paper); border:1px solid var(--line); border-radius:1rem; }
+h2 { margin:0; font-size:1.25rem; line-height:1.35; }
+article p { margin:.3rem 0 1rem; font-size:.92rem; color:var(--dim); }
+.button { display:inline-flex; gap:.6rem; align-items:center; justify-content:center; margin-top:auto; min-height:2.85rem; padding:.5rem 1rem; background:var(--green); color:var(--on); border-radius:.62rem; text-decoration:none; font-weight:650; }
+.button small { opacity:.9; font-weight:480; font-size:.83rem; }
+.sum { display:inline-flex; align-items:center; min-height:2.75rem; margin:.35rem 0 1.45rem; font-size:.95rem; }
+.setup { border-block:1px solid var(--line); padding:1.2rem 0 .9rem; }
+.setup p { margin:.55rem 0; }
+.setup dl { display:grid; grid-template-columns:max-content 1fr; gap:.5rem 1rem; margin:.65rem 0; }
+dt { font-weight:650; } dd { margin:0; }
+footer { padding:1.1rem 0 0; font-size:.86rem; color:var(--dim); }
+footer p { margin:.4rem 0; }
+#english { display:none; } #english:target { display:block; } #english:target + #chinese { display:none; }
+section:focus { outline:none; }
+@media(max-width:33rem) { .downloads { grid-template-columns:1fr; } .button { width:100%; } .setup dl { display:block; } dt { margin-top:.6rem; } }
+</style></head>
+<body><main>
+<section id="english" lang="en" tabindex="-1" aria-labelledby="title-english">
+  <header><span class="brand"><span class="mark" aria-hidden="true"></span>浮光 <span lang="en">Shimmer</span></span>
+    <nav aria-label="Language"><a href="#chinese" lang="zh-CN" >简体中文</a><a href="#english" lang="en" aria-current="true">English</a></nav>
+  </header>
+  <div class="intro"><span class="version">v1.6.2</span><h1 id="title-english">Download Shimmer</h1><p>Create local themes for the Codex desktop app. Choose a wallpaper, sample its colors and preview the theme before applying it.</p></div>
+  <div class="downloads"><article><h2>macOS</h2><p>macOS 13 or later · Apple silicon and Intel</p><a class="button" href="https://github.com/litianbaowork/shimmer-downloads/releases/download/v1.6.2/Shimmer-v1.6.2.dmg">Download for Mac <small>.dmg</small></a></article><article><h2>Windows</h2><p>Windows 10 or later · x64</p><a class="button" href="https://github.com/litianbaowork/shimmer-downloads/releases/download/v1.6.2/Shimmer-Setup-v1.6.2.exe">Download for Windows <small>.exe</small></a></article></div>
+  <a class="sum" href="https://github.com/litianbaowork/shimmer-downloads/releases/download/v1.6.2/SHA256SUMS.txt">Download SHA-256 checksums</a>
+  <div class="setup"><h2>Installation</h2><p>Open the official Codex desktop app once, then quit it before installing Shimmer. On Windows, use the Microsoft Store edition.</p><dl><dt>macOS</dt><dd>Open the DMG, drag Shimmer to Applications, then open it. This version has not been notarized by Apple.</dd><dt>Windows</dt><dd>Run the installer, then open Shimmer from the system tray. The installer is not Authenticode-signed. Windows may show “Unknown publisher”.</dd></dl></div>
+  <footer><p>Built on Codex Dream Skin by Fei-Away, licensed under MIT. © 2026 Codex Dream Skin Studio contributors.</p><p>Shimmer is an independent project, unaffiliated with OpenAI.</p></footer>
+</section>
+<section id="chinese" lang="zh-CN" tabindex="-1" aria-labelledby="title-chinese">
+  <header><span class="brand"><span class="mark" aria-hidden="true"></span>浮光 <span lang="en">Shimmer</span></span>
+    <nav aria-label="语言"><a href="#chinese" lang="zh-CN" aria-current="true">简体中文</a><a href="#english" lang="en" >English</a></nav>
+  </header>
+  <div class="intro"><span class="version">v1.6.2</span><h1 id="title-chinese">下载浮光</h1><p>给 Codex 桌面应用制作本地主题。选一张壁纸，从画面提取配色，预览后即可应用。</p></div>
+  <div class="downloads"><article><h2>macOS</h2><p>macOS 13 及以上 · Apple 芯片与 Intel</p><a class="button" href="https://github.com/litianbaowork/shimmer-downloads/releases/download/v1.6.2/Shimmer-v1.6.2.dmg">下载 Mac 版 <small>.dmg</small></a></article><article><h2>Windows</h2><p>Windows 10 及以上 · x64</p><a class="button" href="https://github.com/litianbaowork/shimmer-downloads/releases/download/v1.6.2/Shimmer-Setup-v1.6.2.exe">下载 Windows 版 <small>.exe</small></a></article></div>
+  <a class="sum" href="https://github.com/litianbaowork/shimmer-downloads/releases/download/v1.6.2/SHA256SUMS.txt">下载 SHA-256 校验清单</a>
+  <div class="setup"><h2>安装方法</h2><p>请先打开一次官方 Codex 桌面应用，再完全退出。Windows 用户请使用 Microsoft Store 版 Codex。</p><dl><dt>macOS</dt><dd>打开 DMG，将 Shimmer 拖入「应用程序」，然后打开。此版本未经 Apple 公证。</dd><dt>Windows</dt><dd>运行安装程序，完成后从系统托盘打开浮光。安装程序未带 Authenticode 签名，Windows 可能显示「未知发布者」。</dd></dl></div>
+  <footer><p>基于 Fei-Away 的 MIT 许可项目 Codex Dream Skin。© 2026 Codex Dream Skin Studio contributors。</p><p>浮光为独立项目，与 OpenAI 无隶属关系。</p></footer>
+</section>
+</main></body></html>
