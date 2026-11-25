@@ -57,6 +57,8 @@ Rainy Corner, Moonlit Duel and Koi were created for Shimmer with ImageGen. Each 
 
 The homepage keeps the current artwork visible until the next image is ready. Parallax can respond to the pointer using its still layers while the animated layers load. Narrow screens up to 760 CSS pixels and browsers reporting a slow connection or data-saving preference use the smaller files in `assets/art/compact/`. Rain and Koi share their native-size standalone loops across both sizes. Open `?art=koi&mode=motion` or `?art=anime&mode=depth` for a particular treatment. Reduced motion starts with the still.
 
+Once the opening poster is ready, the gallery warms artwork one file at a time at low priority. It starts with the current artwork’s still parallax layers, then its other modes and the remaining works. Hovering or focusing a choice moves it to the front. Selecting it reuses a matching in-flight image request. Preloading pauses when the gallery or tab is hidden. On reported 3G connections it stays with the current artwork unless a choice is targeted. Data Saver and 2G disable speculative downloads, and reduced motion limits them to still images.
+
 The opening illustrates a ChatGPT conversation. Shimmer themes the official Codex desktop app. [ChatGPT interface reference](https://learn.chatgpt.com/docs/quickstart)
 
 Run `python3 _checks/site.py` from the repository root before shipping changes to the downloads, artwork or language anchors.

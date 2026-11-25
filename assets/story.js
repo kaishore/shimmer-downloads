@@ -93,26 +93,40 @@
     lastPaintTime = 0;
   const loading = new Map();
   const previouslyDecoded = new Set();
-  function decode(url) {
-    if (loading.has(url)) return loading.get(url).ready;
+  const missedWarmups = new Set();
+  function decode(url, background = false) {
+    const existing = loading.get(url);
+    if (existing) {
+      if (!background) {
+        existing.background = false;
+        existing.image.fetchPriority = 'high';
+      }
+      return existing.ready;
+    }
     const image = new Image();
+    image.fetchPriority = background ? 'low' : 'high';
     image.src = url;
-    const ready = image.decode().then(() => {
+    const entry = { image, background };
+    entry.ready = image.decode().then(() => {
       previouslyDecoded.add(url);
       return image;
+    }, error => {
+      if (entry.background && loading.get(url) === entry) missedWarmups.add(url);
+      throw error;
     }).finally(() => {
-      if (loading.get(url)?.image === image) loading.delete(url);
+      if (loading.get(url) === entry) loading.delete(url);
     });
-    loading.set(url, { image, ready });
-    return ready;
+    loading.set(url, entry);
+    return entry.ready;
   }
-  function discardOtherLoads(files) {
+  function cancelLoad(url, entry) {
+    loading.delete(url);
+    entry.image.removeAttribute('src');
+  }
+  function discardOtherLoads(files, keepWarmups = false) {
     const needed = new Set(files.map(([url]) => url));
     for (const [url, entry] of loading) {
-      if (!needed.has(url)) {
-        loading.delete(url);
-        entry.image.removeAttribute('src');
-      }
+      if (!needed.has(url) && !(keepWarmups && entry.background)) cancelLoad(url, entry);
     }
   }
   function layers(id, mode, animate = !reduced.matches) {
@@ -127,6 +141,63 @@
       ];
     }
     return [[base + (mode === 'motion' ? '-motion' : '') + '.webp', '']];
+  }
+  let posterReady = false;
+  let galleryVisible = true;
+  let hinted = null;
+  let warmTimer, hintTimer;
+
+  function hintedFiles() {
+    if (!hinted) return [];
+    const { art, mode } = hinted;
+    if (mode === 'motion' && reduced.matches) return layers(art, 'still');
+    if (mode === 'depth' && !reduced.matches) return [...layers(art, mode, false), ...layers(art, mode)];
+    return layers(art, mode);
+  }
+  function warmupFiles() {
+    // The poster can be on screen while the initial loop is still arriving.
+    if (pending) return layers(pending.art, 'depth', false);
+    const files = [];
+    const worksToWarm = [currentArt];
+    if (connection?.effectiveType !== '3g') {
+      worksToWarm.push(...Object.keys(works).filter(art => art !== currentArt));
+    }
+    for (const art of worksToWarm) {
+      files.push(...layers(art, 'still'), ...layers(art, 'depth', false));
+      if (!reduced.matches) files.push(...layers(art, 'motion'), ...layers(art, 'depth', true));
+    }
+    return files;
+  }
+  function needsWarmup([url]) {
+    return !previouslyDecoded.has(url) && !missedWarmups.has(url) && loading.get(url)?.background !== false;
+  }
+  function warmNext() {
+    const active = [...loading].find(([, entry]) => entry.background);
+    if (!posterReady || !galleryVisible || document.hidden || connection?.saveData ||
+        ['slow-2g', '2g'].includes(connection?.effectiveType) || failed) {
+      if (active) cancelLoad(...active);
+      return;
+    }
+    // A foreground choice controls its transfers. A cache hit can coexist with a warmup.
+    if (pending && !(pending.initial && pending.mode === 'motion')) return;
+    const files = warmupFiles();
+    const priority = hintedFiles().find(needsWarmup);
+    // Finish a useful in-flight file before filling the next idle slot.
+    if (!priority && active && files.some(([url]) => url === active[0])) return;
+    const next = priority ?? files.find(needsWarmup);
+    if (active && active[0] !== next?.[0]) cancelLoad(...active);
+    if (next && !loading.has(next[0])) decode(next[0], true).then(scheduleWarmup, scheduleWarmup);
+  }
+  function scheduleWarmup() {
+    clearTimeout(warmTimer);
+    warmTimer = setTimeout(warmNext, 0);
+  }
+  function hintChoice(button) {
+    hinted = {
+      art: button.dataset.art ?? pending?.art ?? currentArt,
+      mode: button.dataset.mode ?? pending?.mode ?? currentMode,
+    };
+    scheduleWarmup();
   }
   // The endpoint colours in the preview come from the actual local image.
   // Keep the art-directed defaults available if sampling is unavailable.
@@ -259,19 +330,22 @@
     renderCopy();
     applySettings();
   }
-  async function choose(art, mode) {
+  async function choose(art, mode, initial = false) {
     if (!Object.hasOwn(works, art) || !modes.includes(mode)) return;
     const files = layers(art, mode);
     const key = files[0][0];
-    if (pending?.key === key) return;
+    clearTimeout(hintTimer);
+    hinted = null;
+    if (pending?.key === key || (!pending && !failed && displayedUrl === key)) return;
     failed = null;
     if (displayedUrl === key) {
       pending = null;
-      discardOtherLoads([]);
+      discardOtherLoads([], true);
       renderControls();
+      scheduleWarmup();
       return;
     }
-    const request = { art, mode, key };
+    const request = { art, mode, key, initial };
     pending = request;
     renderControls();
 
@@ -285,8 +359,8 @@
     } else if (mode === 'motion' && art !== currentArt) {
       preview = layers(art, 'still');
     }
-    discardOtherLoads([...files, ...preview]);
     const seenTarget = files.every(([url]) => previouslyDecoded.has(url));
+    discardOtherLoads([...files, ...preview], seenTarget);
     if (preview.length && displayedUrl !== preview[0][0] && !seenTarget) {
       Promise.all(preview.map(([url]) => decode(url))).then((images) => {
         if (pending === request || failed === request) present(art, previewMode, preview, images);
@@ -300,12 +374,14 @@
         pending = null;
         failed = request;
         renderControls();
+        scheduleWarmup();
       }
       return;
     }
     if (pending !== request) return;
     pending = null;
     present(art, mode, files, images);
+    scheduleWarmup();
   }
   all('[data-art]').forEach((button) =>
     button.addEventListener('click', () => choose(button.dataset.art, pending?.mode ?? currentMode)),
@@ -313,6 +389,13 @@
   all('[data-mode]').forEach((button) =>
     button.addEventListener('click', () => choose(pending?.art ?? currentArt, button.dataset.mode)),
   );
+  all('[data-art], [data-mode]').forEach(button => {
+    button.addEventListener('pointerenter', event => {
+      if (event.pointerType === 'mouse') hintTimer = setTimeout(() => hintChoice(button), 120);
+    });
+    button.addEventListener('pointerleave', () => clearTimeout(hintTimer));
+    button.addEventListener('focus', () => hintChoice(button));
+  });
   all('.media-retry').forEach((button) => {
     button.addEventListener('click', () => {
       if (!failed) return;
@@ -498,7 +581,21 @@
   const initialArt = Object.hasOwn(works, selection) ? selection : currentArt;
   const previewMode = options.get('mode');
   const initialMode = reduced.matches ? 'still' : modes.includes(previewMode) ? previewMode : 'motion';
-  choose(initialArt, initialMode);
+  choose(initialArt, initialMode, true);
+  const poster = q('.opening .art-layer');
+  poster.decode().then(() => previouslyDecoded.add(poster.getAttribute('src')), () => {}).then(() => {
+    posterReady = true;
+    scheduleWarmup();
+  });
+  if ('IntersectionObserver' in window) {
+    galleryVisible = false;
+    new IntersectionObserver(([entry]) => {
+      galleryVisible = entry.isIntersecting;
+      scheduleWarmup();
+    }).observe(journey);
+  }
+  document.addEventListener('visibilitychange', scheduleWarmup);
+  connection?.addEventListener?.('change', scheduleWarmup);
   new ResizeObserver(measure).observe(journey);
   window.addEventListener('resize', measure);
   window.addEventListener('scroll', requestPaint, { passive: true });
@@ -506,6 +603,7 @@
   window.addEventListener('pageshow', measure);
   document.fonts?.ready.then(measure);
   reduced.addEventListener('change', () => {
+    scheduleWarmup();
     if (reduced.matches) choose(pending?.art ?? currentArt, 'still');
     else if ((pending?.mode ?? currentMode) === 'depth') choose(pending?.art ?? currentArt, 'depth');
     measure();
