@@ -53,11 +53,11 @@ After a new public release is available:
 
 ## Homepage artwork
 
-Rainy Corner, Moonlit Duel and Koi were created for Shimmer with ImageGen. Each work in `assets/art/` includes a still, a thumbnail, a looping animated WebP, a transparent foreground, a clean still background and a looping background for animated parallax. In the Moonlit Duel preview, the two fighters move independently.
+Rainy Corner, Moonlit Duel and Koi were created for Shimmer with ImageGen. Each artwork has a still, a loop and a parallax composition with separate foreground and background layers. Both fighters move in Moonlit Duel. Open `?art=koi&mode=motion` or `?art=anime&mode=depth` for a particular treatment. Reduced motion starts with the still and limits preloading to static images.
 
-The homepage keeps the current artwork visible until the next image is ready. Parallax can respond to the pointer using its still layers while the animated layers load. Narrow screens up to 760 CSS pixels and browsers reporting a slow connection or data-saving preference use the smaller files in `assets/art/compact/`. Rain and Koi share their native-size standalone loops across both sizes. Open `?art=koi&mode=motion` or `?art=anime&mode=depth` for a particular treatment. Reduced motion starts with the still.
+The gallery serves WebP posters and transparent still layers. Browsers that decode an AVIF image sequence use the smaller animated AVIF files. An unsupported sequence format or a failed individual animation falls back to its WebP counterpart. Narrow screens use compact posters. Parallax and the Moonlit Duel loop also have compact versions for narrow screens or slower connections. Rain and Koi share their native-size standalone loops across both sizes.
 
-Once the opening poster is ready, the gallery warms artwork one file at a time at low priority. It starts with the current artwork’s still parallax layers, then its other modes and the remaining works. Hovering or focusing a choice moves it to the front. Selecting it reuses a matching in-flight image request. Preloading pauses when the gallery or tab is hidden. On reported 3G connections it stays with the current artwork unless a choice is targeted. Data Saver and 2G disable speculative downloads, and reduced motion limits them to still images.
+Once the opening poster is ready, the gallery queues all nine treatments together, with up to nine low-priority transfers on normal connections and three on reported 3G. A hovered or keyboard-focused choice gets priority. A click reuses matching in-flight transfers. Still layers provide interactive parallax while its animation arrives. Speculation pauses when the gallery or tab is hidden, and is disabled for Data Saver and 2G.
 
 The opening illustrates a ChatGPT conversation. Shimmer themes the official Codex desktop app. [ChatGPT interface reference](https://learn.chatgpt.com/docs/quickstart)
 

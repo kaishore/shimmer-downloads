@@ -24,6 +24,8 @@ class Page(HTMLParser):
             assert target not in self.targets, f"Duplicate id: {target}"
             self.targets.add(target)
         self.references.extend(attrs[key] for key in ("href", "src") if key in attrs)
+        if "srcset" in attrs:
+            self.references.extend(candidate.split()[0] for candidate in attrs["srcset"].split(","))
 
 
 def chunks(path):
@@ -80,13 +82,54 @@ def verify_loop(path, transparent=False):
     return durations
 
 
+def boxes(data):
+    offset = 0
+    while offset < len(data):
+        size, tag = unpack_from(">I4s", data, offset)
+        assert 8 <= size <= len(data) - offset, f"Invalid media box: {tag}"
+        yield tag, data[offset + 8 : offset + size]
+        offset += size
+
+
+def verify_sequence(path, fallback_ms, transparent):
+    data = path.read_bytes()
+    top = dict(boxes(data))
+    assert b"avis" in top[b"ftyp"] and b"mdat" in top, f"Expected an AVIF sequence: {path}"
+    tracks = set()
+    for kind, track in boxes(top[b"moov"]):
+        if kind != b"trak":
+            continue
+        media = dict(boxes(dict(boxes(track))[b"mdia"]))
+        tracks.add(media[b"hdlr"][8:12])
+        clock = media[b"mdhd"]
+        scale = unpack_from(">I", clock, 20 if clock[0] == 1 else 12)[0]
+        sample_table = dict(boxes(dict(boxes(media[b"minf"]))[b"stbl"]))
+        table = sample_table[b"stts"]
+        timecodes = []
+        for offset in range(8, len(table), 8):
+            count, duration = unpack_from(">II", table, offset)
+            assert count <= len(fallback_ms), path
+            timecodes.extend([1000 * duration] * count)
+        assert timecodes == [t * scale for t in fallback_ms], f"Playback timing differs: {path}"
+    assert tracks.intersection({b"pict", b"vide"}), path
+    assert (b"auxv" in tracks) == transparent, f"Animated alpha track mismatch: {path}"
+
+
 art = root / "assets/art"
+probe = root / "assets/sequence-check.avif"
+verify_sequence(probe, [80, 80], transparent=True)
+assert b"meta" not in dict(boxes(probe.read_bytes())), "The sequence probe must not contain a still poster."
+transfer_files = {directory: {probe} for directory in (art, art / "compact")}
 for name in gallery:
     for suffix in ("", "-small"):
         tags = [tag for tag, _ in chunks(art / f"{name}{suffix}.webp")]
         assert tags and b"ANIM" not in tags, f"Expected a still image: {name}{suffix}"
     desktop_timing = {}
     for directory in (art, art / "compact"):
+        poster = directory / f"{name}.webp"
+        assert b"ANIM" not in dict(chunks(poster)), f"Expected a still poster: {poster}"
+        transfer_files[directory].update((poster, art / f"{name}-small.webp",
+                                          directory / f"{name}-back.webp", directory / f"{name}-front.webp"))
         back = dict(chunks(directory / f"{name}-back.webp"))
         front = dict(chunks(directory / f"{name}-front.webp"))
         assert b"ANIM" not in back and b"ANIM" not in front, f"Expected still preview planes: {name}"
@@ -97,6 +140,10 @@ for name in gallery:
         if name == "anime":
             loops["front"] = directory / f"{name}-front-motion.webp"
         timings = {kind: verify_loop(path, kind == "front") for kind, path in loops.items()}
+        for kind, path in loops.items():
+            sequence = path.with_suffix(".avif")
+            verify_sequence(sequence, timings[kind], kind == "front")
+            transfer_files[directory].add(sequence)
         if "front" in timings:
             assert timings["back"] == timings["front"], f"Parallax planes out of sync: {directory}/{name}"
         if directory == art:
@@ -105,4 +152,9 @@ for name in gallery:
             assert timings == desktop_timing, f"Compact version changed playback timing: {name}"
         depth_bytes = loops["back"].stat().st_size + loops.get("front", directory / f"{name}-front.webp").stat().st_size
         assert depth_bytes <= (5_000_000 if directory == art else 3_500_000), f"Parallax transfer too large: {directory}/{name}"
-print("Verified bilingual routes, downloads, and both sizes of all three artworks, including animation timing and transfer budgets.")
+for directory, files in transfer_files.items():
+    total = sum(file.stat().st_size for file in files)
+    limit = 3_500_000 if directory == art else 2_600_000
+    assert total <= limit, f"Combined nine-effect transfer exceeds {limit} bytes: {directory}"
+    print(f"All nine effects with previews and thumbnails ({directory.name}): {total:,} bytes")
+print("Verified bilingual routes, downloads, motion timing, alpha tracks, and WebP alternatives.")

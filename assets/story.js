@@ -72,12 +72,13 @@
     faq = q('#faq');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const connection = navigator.connection;
-  const compactArtwork = matchMedia('(max-width: 760px)').matches ||
+  const narrow = matchMedia('(max-width: 760px)').matches;
+  const compactArtwork = narrow ||
     connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType);
   const english = () => root.lang === 'en';
   let currentArt = 'rain',
     currentMode = 'still',
-    displayedUrl = 'assets/art/rain.webp';
+    displayedUrl = layers('rain', 'still')[0][0];
   let pending = null,
     failed = null;
   const sampled = new Map();
@@ -94,6 +95,35 @@
   const loading = new Map();
   const previouslyDecoded = new Set();
   const missedWarmups = new Set();
+  const webpFallback = new Set();
+  let sequenceSupport;
+  function supportsSequences() {
+    if (!sequenceSupport) {
+      // This tiny AVIF has two frames and no standalone poster for a still-only decoder.
+      const probe = new Image();
+      probe.src = 'assets/sequence-check.avif';
+      sequenceSupport = probe.decode().then(() => probe.naturalWidth === 2, () => false);
+    }
+    return sequenceSupport;
+  }
+  async function loadArtwork(url, entry) {
+    const image = entry.image;
+    if (url.endsWith('-motion.webp') && !webpFallback.has(url) && await supportsSequences()) {
+      if (loading.get(url) !== entry) throw new DOMException('Superseded', 'AbortError');
+      image.src = url.replace(/\.webp$/, '.avif');
+      try {
+        await image.decode();
+        return image;
+      } catch (error) {
+        if (loading.get(url) !== entry) throw error;
+      }
+    }
+    if (loading.get(url) !== entry) throw new DOMException('Superseded', 'AbortError');
+    image.src = url;
+    await image.decode();
+    if (url.endsWith('-motion.webp')) webpFallback.add(url);
+    return image;
+  }
   function decode(url, background = false) {
     const existing = loading.get(url);
     if (existing) {
@@ -105,9 +135,9 @@
     }
     const image = new Image();
     image.fetchPriority = background ? 'low' : 'high';
-    image.src = url;
     const entry = { image, background };
-    entry.ready = image.decode().then(() => {
+    loading.set(url, entry);
+    entry.ready = loadArtwork(url, entry).then(() => {
       previouslyDecoded.add(url);
       return image;
     }, error => {
@@ -116,22 +146,29 @@
     }).finally(() => {
       if (loading.get(url) === entry) loading.delete(url);
     });
-    loading.set(url, entry);
     return entry.ready;
   }
   function cancelLoad(url, entry) {
     loading.delete(url);
     entry.image.removeAttribute('src');
   }
-  function discardOtherLoads(files, keepWarmups = false) {
+  function releaseOtherLoads(files) {
     const needed = new Set(files.map(([url]) => url));
     for (const [url, entry] of loading) {
-      if (!needed.has(url) && !(keepWarmups && entry.background)) cancelLoad(url, entry);
+      if (needed.has(url)) continue;
+      if (!canWarmGallery() || (reduced.matches && url.endsWith('-motion.webp'))) {
+        cancelLoad(url, entry);
+      } else if (!entry.background) {
+        // Still needed by the gallery: finish the transfer at background priority.
+        entry.background = true;
+        entry.image.fetchPriority = 'low';
+        entry.ready.then(scheduleWarmup, scheduleWarmup);
+      }
     }
   }
   function layers(id, mode, animate = !reduced.matches) {
     // Rain and Koi have a single native-size loop shared by both layouts.
-    const useCompact = compactArtwork && (mode === 'depth' || (mode === 'motion' && id === 'anime'));
+    const useCompact = mode === 'still' ? narrow : compactArtwork && (mode === 'depth' || id === 'anime');
     const directory = useCompact ? 'assets/art/compact/' : 'assets/art/';
     const base = directory + id;
     if (mode === 'depth') {
@@ -155,38 +192,41 @@
     return layers(art, mode);
   }
   function warmupFiles() {
-    // The poster can be on screen while the initial loop is still arriving.
-    if (pending) return layers(pending.art, 'depth', false);
-    const files = [];
-    const worksToWarm = [currentArt];
-    if (connection?.effectiveType !== '3g') {
-      worksToWarm.push(...Object.keys(works).filter(art => art !== currentArt));
+    const art = pending?.art ?? currentArt;
+    const gallery = [art, ...Object.keys(works).filter(other => other !== art)];
+    const files = [...hintedFiles(), ...layers(art, 'depth', false)];
+    // Give every artwork a turn in the first batch. Optional preview planes come last.
+    for (const mode of modes) {
+      if (mode === 'motion' && reduced.matches) continue;
+      const choices = gallery.map(id => layers(id, mode));
+      files.push(...choices.map(choice => choice[0]), ...choices.flatMap(choice => choice.slice(1)));
     }
-    for (const art of worksToWarm) {
-      files.push(...layers(art, 'still'), ...layers(art, 'depth', false));
-      if (!reduced.matches) files.push(...layers(art, 'motion'), ...layers(art, 'depth', true));
-    }
+    for (const id of gallery) files.push(...layers(id, 'depth', false));
     return files;
   }
-  function needsWarmup([url]) {
-    return !previouslyDecoded.has(url) && !missedWarmups.has(url) && loading.get(url)?.background !== false;
+  function canWarmGallery() {
+    return posterReady && galleryVisible && !document.hidden && !failed &&
+      !connection?.saveData && !['slow-2g', '2g'].includes(connection?.effectiveType);
   }
   function warmNext() {
-    const active = [...loading].find(([, entry]) => entry.background);
-    if (!posterReady || !galleryVisible || document.hidden || connection?.saveData ||
-        ['slow-2g', '2g'].includes(connection?.effectiveType) || failed) {
-      if (active) cancelLoad(...active);
-      return;
+    const canWarm = canWarmGallery();
+    const candidates = new Set(canWarm ? warmupFiles().map(([url]) => url) : []);
+    let slots = connection?.effectiveType === '3g' ? 3 : 9;
+    for (const [url, entry] of loading) {
+      if (!entry.background) continue;
+      if (candidates.has(url)) slots--;
+      else cancelLoad(url, entry);
     }
-    // A foreground choice controls its transfers. A cache hit can coexist with a warmup.
-    if (pending && !(pending.initial && pending.mode === 'motion')) return;
-    const files = warmupFiles();
-    const priority = hintedFiles().find(needsWarmup);
-    // Finish a useful in-flight file before filling the next idle slot.
-    if (!priority && active && files.some(([url]) => url === active[0])) return;
-    const next = priority ?? files.find(needsWarmup);
-    if (active && active[0] !== next?.[0]) cancelLoad(...active);
-    if (next && !loading.has(next[0])) decode(next[0], true).then(scheduleWarmup, scheduleWarmup);
+    if (!canWarm || (pending && !pending.initial)) return;
+    // An explicit hover or keyboard focus can borrow one slot without discarding bytes.
+    if (slots === 0 && hintedFiles().some(([url]) =>
+      !loading.has(url) && !previouslyDecoded.has(url) && !missedWarmups.has(url))) slots++;
+    for (const url of candidates) {
+      if (slots <= 0) break;
+      if (loading.has(url) || previouslyDecoded.has(url) || missedWarmups.has(url)) continue;
+      slots--;
+      decode(url, true).then(scheduleWarmup, scheduleWarmup);
+    }
   }
   function scheduleWarmup() {
     clearTimeout(warmTimer);
@@ -340,7 +380,7 @@
     failed = null;
     if (displayedUrl === key) {
       pending = null;
-      discardOtherLoads([], true);
+      releaseOtherLoads([]);
       renderControls();
       scheduleWarmup();
       return;
@@ -360,7 +400,7 @@
       preview = layers(art, 'still');
     }
     const seenTarget = files.every(([url]) => previouslyDecoded.has(url));
-    discardOtherLoads([...files, ...preview], seenTarget);
+    releaseOtherLoads([...files, ...preview]);
     if (preview.length && displayedUrl !== preview[0][0] && !seenTarget) {
       Promise.all(preview.map(([url]) => decode(url))).then((images) => {
         if (pending === request || failed === request) present(art, previewMode, preview, images);
@@ -583,7 +623,7 @@
   const initialMode = reduced.matches ? 'still' : modes.includes(previewMode) ? previewMode : 'motion';
   choose(initialArt, initialMode, true);
   const poster = q('.opening .art-layer');
-  poster.decode().then(() => previouslyDecoded.add(poster.getAttribute('src')), () => {}).then(() => {
+  poster.decode().then(() => previouslyDecoded.add(layers('rain', 'still')[0][0]), () => {}).then(() => {
     posterReady = true;
     scheduleWarmup();
   });

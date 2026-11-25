@@ -10,14 +10,16 @@
     />
     <meta name="theme-color" content="#221d24" />
     <link rel="icon" href="assets/mark.svg" type="image/svg+xml" />
-    <link rel="preload" as="image" href="assets/art/rain.webp" fetchpriority="high" />
+    <link rel="preload" as="image" media="(max-width: 760px)" href="assets/art/compact/rain.webp" fetchpriority="high" />
+    <link rel="preload" as="image" media="(width > 760px)" href="assets/art/rain.webp" fetchpriority="high" />
+    <link rel="preload" as="image" type="image/avif" media="(prefers-reduced-motion: no-preference)" href="assets/sequence-check.avif" />
     <script src="assets/locale.js"></script>
     <link rel="stylesheet" href="assets/base.css" />
     <link rel="stylesheet" href="assets/story.css?v=2" />
     <link rel="stylesheet" href="assets/workspace.css" />
     <link rel="stylesheet" href="assets/edition.css" />
     <script defer src="assets/workspace.js"></script>
-    <script defer src="assets/story.js?v=3"></script>
+    <script defer src="assets/story.js?v=4"></script>
   </head>
   <body>
     <span id="chinese" class="target"></span><span id="english" class="target"></span
@@ -47,14 +49,17 @@
             <div class="backdrop" aria-hidden="true">
               <div class="art-stack">
                 <div class="exposure active">
-                  <img
-                    class="art-layer"
-                    alt=""
-                    width="1672"
-                    height="941"
-                    src="assets/art/rain.webp"
-                    decoding="async"
-                  />
+                  <picture>
+                    <source media="(max-width: 760px)" srcset="assets/art/compact/rain.webp" />
+                    <img
+                      class="art-layer"
+                      alt=""
+                      width="1280"
+                      height="720"
+                      src="assets/art/rain.webp"
+                      decoding="async"
+                    />
+                  </picture>
                 </div>
               </div>
               <div class="frame-light"></div>
@@ -151,14 +156,17 @@
               <div class="picture-frame mobile-frame">
                 <div class="art-stack">
                   <div class="exposure active">
-                    <img
-                      class="art-layer"
-                      alt=""
-                      width="1672"
-                      height="941"
-                      src="assets/art/rain.webp"
-                      decoding="async"
-                    />
+                    <picture>
+                      <source media="(max-width: 760px)" srcset="assets/art/compact/rain.webp" />
+                      <img
+                        class="art-layer"
+                        alt=""
+                        width="1280"
+                        height="720"
+                        src="assets/art/rain.webp"
+                        decoding="async"
+                      />
+                    </picture>
                   </div>
                 </div>
                 <div class="workspace-ui" data-workspace></div>
