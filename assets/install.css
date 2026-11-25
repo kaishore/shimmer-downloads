@@ -1,0 +1,116 @@
+.install-page {
+  --paper: #faf8f3;
+  --panel: #fffdf8;
+  --ink: #2d2335;
+  --soft-ink: #625968;
+  --rule: #d9d2cd;
+  --accent: #a53929;
+  --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Times New Roman", serif;
+  --sans: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font: 16px/1.6 var(--sans);
+}
+.install-page *, .install-page *::before, .install-page *::after { box-sizing: border-box; }
+.install-page :is(h1,h2,h3,h4,p,ol) { margin: 0; }
+.install-page a { color: inherit; text-underline-offset: .22em; text-decoration-thickness: 1px; }
+.install-page :is(a,summary):focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.install-page .install-edition.en { display: none; }
+.install-page:has(.install-edition.en:target, .install-edition.en :target) .install-edition.en { display: block; }
+.install-page:has(.install-edition.en:target, .install-edition.en :target) .install-edition.zh { display: none; }
+.install-page .page-width { width: min(1072px, calc(100% - clamp(40px, 10vw, 144px))); margin-inline: auto; }
+.install-mast, .install-nav, .brand-home, .lang-picker, .version-link, .file-details, .package-link, .log-title {
+  display: flex; align-items: center;
+}
+.install-mast { min-height: 76px; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--rule); }
+.install-nav { gap: clamp(12px, 2.6vw, 34px); font-size: 13px; }
+.install-page .brand-home { gap: 7px; text-decoration: none; white-space: nowrap; }
+.brand-home img { margin-inline-end: 3px; }
+.brand-home strong { font: 700 21px/1.1 var(--serif); }
+.brand-home i { align-self: baseline; margin-top: 6px; font: italic 17px Georgia, serif; }
+.install-nav a { display: inline-flex; align-items: center; min-height: 40px; text-decoration: none; }
+.install-nav .back { gap: 5px; }
+.lang-picker { gap: 12px; border-inline-start: 1px solid var(--rule); padding-inline-start: min(2.6vw, 28px); }
+.lang-picker a[aria-current] { color: var(--accent); text-decoration: underline; }
+.skip-link { position: fixed; z-index: 2; inset-block-start: 8px; inset-inline-start: 16px; padding: 10px 14px; transform: translateY(-160%); background: var(--ink); }
+.install-page a.skip-link { color: white; }
+.skip-link:focus { transform: none; }
+.intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 28px; padding: clamp(36px,5.2vw,74px) 0 28px; }
+.intro h1 { font: 550 clamp(46px,5.5vw,80px)/1.06 var(--serif); letter-spacing: -.055em; }
+.install-edition:lang(en) .intro h1 { font-family: "Iowan Old Style", Baskerville, Georgia, serif; font-weight: 400; }
+.intro p { margin-top: 12px; color: var(--soft-ink); }
+.version-link { flex: none; min-height: 40px; gap: 8px; color: var(--soft-ink); font-size: 13px; text-decoration: none; }
+.version-link strong { font-weight: 650; color: var(--ink); }
+.version-link span { color: var(--accent); }
+.package-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: clamp(14px,2.4vw,28px); }
+.platform-card { min-width: 0; padding: clamp(20px,3vw,38px); border: 1px solid var(--rule); border-top: 3px solid #57475f; border-radius: 4px; background: var(--panel); }
+.platform-card + .platform-card { border-top-color: #ba715c; }
+.platform-card h2 { font: 510 clamp(30px,3.9vw,49px)/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -.052em; }
+.platform-card .requirements { margin-top: 3px; color: var(--soft-ink); font-size: 14px; min-height: 24px; }
+.install-page .package-link { justify-content: space-between; gap: 8px; margin-top: 20px; padding: 12px 17px; min-height: 52px; border-radius: 4px; background: var(--ink); color: var(--panel); font-weight: 620; text-decoration: none; }
+.install-page .package-link:hover { background: #493851; }
+.package-link .arrow { font-size: 20px; color: #f9bdac; font-weight: 500; }
+.file-details { justify-content: space-between; margin-top: 6px; color: var(--soft-ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.instructions { margin-top: 16px; border-top: 1px solid var(--rule); }
+.instructions summary { min-height: 44px; cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 620; }
+.instructions summary::-webkit-details-marker { display: none; }
+.instructions summary::after { content: "+"; color: var(--accent); font-size: 19px; font-weight: 400; line-height: 1; }
+.instructions[open] summary::after { content: "−"; }
+.instructions ol { padding-inline-start: 1.4em; padding-bottom: 12px; font-size: 14px; }
+.instructions li + li { margin-top: 5px; }
+.instructions li::marker { font-variant-numeric: tabular-nums; color: var(--accent); }
+.platform-notice { color: var(--soft-ink); font-size: 13px; line-height: 1.55; }
+.checksum-line { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px 16px; padding-top: 17px; font-size: 13px; }
+.checksum-line p, .upgrade-note { color: var(--soft-ink); }
+.checksum-line a { display: inline-block; padding: 4px 0; font-weight: 550; }
+.install-page .upgrade-note { margin-top: 2px; font-size: 13px; }
+.log-section { display: grid; grid-template-columns: minmax(185px,.8fr) minmax(0,2fr); gap: 38px; margin-top: clamp(36px,5.2vw,72px); padding: clamp(26px,3.2vw,42px) 0 4px; border-top: 1px solid var(--rule); scroll-margin-top: 12px; }
+.log-title { display: block; }
+.log-title h2 { margin: 0 0 6px; font: 550 clamp(28px,3.15vw,40px)/1.28 var(--serif); letter-spacing: -.045em; }
+.log-title a, .version-entry a, .footer-back { font-size: 13px; }
+.version-entry { display: grid; grid-template-columns: 88px minmax(0,1fr); gap: 18px; }
+.version-entry + .version-entry { border-top: 1px solid var(--rule); margin-top: 22px; padding-top: 22px; }
+.version-entry h3 { font: 400 24px/1.2 Georgia,serif; letter-spacing: -.04em; }
+.version-entry time { color: var(--soft-ink); font: 12px/1.8 var(--sans); }
+.version-entry h4 { font-size: 16px; }
+.version-entry p { margin: 3px 0; color: var(--soft-ink); font-size: 14px; line-height: 1.75; }
+.version-entry a, .log-title a { display: inline-block; padding: 5px 0; }
+.install-footer { display: flex; justify-content: space-between; align-items: baseline; gap: 30px; margin-top: 44px; padding: 20px 0 28px; border-top: 1px solid var(--rule); color: var(--soft-ink); font-size: 12px; }
+.install-footer p { max-width: 70ch; }
+.footer-back { flex: none; }
+.install-page a:hover:not(.brand-home,.package-link) { text-decoration: underline; color: var(--accent); }
+@media (max-width: 720px) {
+  .install-page .page-width { width: calc(100% - 36px); }
+  .install-mast { min-height: 64px; gap: 10px; }
+  .brand-home img { width: 27px; height: 27px; margin: 0; }
+  .brand-home strong { font-size: 18px; }
+  .brand-home i { font-size: 14px; margin-top: 5px; }
+  .install-nav { gap: 10px; }
+  .lang-picker { gap: 8px; padding-inline-start: 10px; }
+  .intro { align-items: flex-start; flex-direction: column; gap: 3px; padding: 26px 0 15px; }
+  .intro h1 { font-size: clamp(39px,9vw,52px); }
+  .intro p { margin-top: 7px; font-size: 14px; }
+  .version-link { min-height: 32px; }
+  .platform-card { padding: 17px; }
+  .package-grid { grid-template-columns: 1fr; gap: 12px; }
+  .platform-card h2 { font-size: 30px; }
+  .platform-card .requirements { min-height: 0; font-size: 13px; }
+  .install-page .package-link { margin-top: 12px; min-height: 45px; padding: 8px 14px; }
+  .instructions { margin-top: 9px; }
+  .instructions summary { min-height: 38px; }
+  .file-details, .platform-notice { font-size: 12px; }
+  .log-section { grid-template-columns: 1fr; gap: 20px; }
+  .log-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .version-entry { grid-template-columns: 73px minmax(0,1fr); gap: 12px; }
+  .install-footer { flex-direction: column; gap: 10px; margin-top: 32px; }
+}
+@media (max-width: 355px) {
+  .install-page .page-width { width: calc(100% - 26px); }
+  .install-page .brand-home, .install-nav, .install-mast, .lang-picker { gap: 5px; }
+  .lang-picker { padding-inline-start: 6px; }
+  .install-nav { font-size: 12px; }
+}
+@media (forced-colors: active) {
+  .install-page .package-link { border: 1px solid ButtonText; }
+}

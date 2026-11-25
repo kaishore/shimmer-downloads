@@ -1,0 +1,235 @@
+/* A read-only bilingual conversation. Its artwork is supplied by the containing frame. */
+.workspace-ui {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  container: workspace / size;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color-scheme: dark;
+  --ws-canvas: 29 29 29;
+  --ws-rail: 24 24 24;
+  --ws-bubble: 51 51 51;
+  --ws-composer: 45 45 45;
+  --ws-text: #f4f4f4;
+  --ws-subtle: #c4c4c4;
+  --ws-line: rgb(255 255 255 / 10%);
+  --ws-caption-ink: #d7d7d7;
+  --ws-press: rgb(255 255 255 / 9%);
+  --ws-action: #f3f3f3;
+  --ws-action-ink: #252525;
+  --ws-shell-opacity: var(--ui, 1);
+}
+/* Match each stored artwork's light or dark appearance. */
+.journey:has([data-art="alpine"][aria-pressed="true"]) .workspace-ui {
+  color-scheme: light;
+  --ws-canvas: 255 255 255;
+  --ws-rail: 247 247 247;
+  --ws-bubble: 235 235 235;
+  --ws-composer: 255 255 255;
+  --ws-text: #202020;
+  --ws-subtle: #515151;
+  --ws-line: rgb(25 25 24 / 14%);
+  --ws-caption-ink: #383838;
+  --ws-press: rgb(35 35 34 / 8%);
+  --ws-action: #262626;
+  --ws-action-ink: #fff;
+}
+.journey:has(#palette-toggle[aria-pressed="true"]) .workspace-ui {
+  --ws-press: color-mix(in srgb, var(--accent) 35%, transparent);
+  --ws-action: var(--accent);
+  --ws-action-ink: #191919;
+}
+.workspace-ui *, .workspace-ui *::before, .workspace-ui *::after { box-sizing: border-box; }
+.ws-surface {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: clamp(168px, 26.5cqw, 340px) minmax(0, 1fr);
+  color: var(--ws-text);
+  opacity: var(--ws-shell-opacity);
+  text-align: start;
+  letter-spacing: normal;
+  font: 400 clamp(14.5px, calc(12.6px + .41cqw), 17.5px)/1.48 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.ws-icon { display: block; flex: none; width: 1.18em; height: 1.18em; }
+.ws-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 .58em .55em;
+  background: rgb(var(--ws-rail) / calc(.93 + var(--panel-alpha, .5) * .07));
+  border-inline-end: 1px solid var(--ws-line);
+  font-size: clamp(13px, calc(11px + .38cqw), 15px);
+}
+.ws-chrome, .ws-titlebar, .ws-header-tools, .ws-share, .ws-menu > div, .ws-lights,
+.ws-feedback, .ws-speech, .ws-mobile-brand, .ws-settings { display: flex; align-items: center; }
+.ws-chrome {
+  height: 3em;
+  flex: none;
+  justify-content: space-between;
+  padding: 0 .55em;
+  color: var(--ws-subtle);
+}
+.ws-lights { gap: .38em; }
+.ws-lights i { width: .68em; height: .68em; border-radius: 50%; background: #fa665c; }
+.ws-lights i:nth-child(2) { background: #f4bf4f; }
+.ws-lights i:last-child { background: #5ac553; }
+.ws-product {
+  margin: .62em .42em .74em;
+  font-size: 1.2em;
+  font-weight: 640;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+}
+.ws-menu > div, .ws-settings { gap: .58em; padding: .42em .58em; line-height: 1.4; }
+.ws-menu .ws-icon, .ws-settings .ws-icon { width: 1.1em; height: 1.1em; }
+.ws-recents { margin-top: 1.43em; }
+.ws-group-name { margin: 0 .66em .33em; color: var(--ws-subtle); font-size: .88em; }
+.ws-thread {
+  overflow: hidden;
+  padding: .4em .58em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: .54em;
+}
+.ws-current { background: var(--ws-press); }
+.ws-settings { margin-top: auto; color: var(--ws-subtle); }
+.ws-chat {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: rgb(var(--ws-canvas) / calc(.035 + var(--panel-alpha, .5) * .65));
+}
+.ws-chat::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 116% 56% at 25% 49%, rgb(var(--ws-canvas) / .84) 0%, rgb(var(--ws-canvas) / .74) 43%, rgb(var(--ws-canvas) / .24) 77%, transparent 100%),
+    linear-gradient(to bottom, rgb(var(--ws-canvas) / .78) 0%, transparent 24%, transparent 76%, rgb(var(--ws-canvas) / .86) 100%);
+}
+.ws-titlebar {
+  min-height: 2.94em;
+  padding: 0 1.07em;
+  gap: .7em;
+  font-size: .89em;
+}
+.ws-topic { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 580; }
+.ws-header-tools { margin-inline-start: auto; gap: .96em; }
+.ws-share { gap: .35em; font-size: .92em; }
+.ws-share .ws-icon { width: 1.1em; height: 1.1em; }
+.ws-mobile-brand { display: none; gap: .62em; }
+.ws-mobile-brand b { font-weight: 640; letter-spacing: -.032em; }
+.ws-mobile-brand .ws-icon:last-child { width: .78em; height: .78em; margin-inline-start: -.45em; }
+.ws-conversation { min-height: 0; overflow: hidden; display: grid; align-content: center; }
+.ws-turns, .ws-bottom { width: min(calc(100% - 4.4em), 42rem); margin-inline: auto; }
+.ws-turns {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25em, 5.7cqh, 2.6em);
+  padding: .4em 0 min(3.6cqh, 1.8em);
+}
+.ws-request {
+  align-self: flex-end;
+  max-width: 82%;
+  padding: .58em .98em;
+  color: var(--ws-text);
+  background: rgb(var(--ws-bubble) / calc(.91 + var(--panel-alpha, .5) * .09));
+  border-radius: 1.35em;
+  opacity: clamp(0, calc(var(--ui, 1) * 3 - .25), 1);
+  line-height: 1.45;
+}
+.ws-response {
+  line-height: 1.58;
+  opacity: clamp(0, calc(var(--ui, 1) * 2.5 - 1.05), 1);
+}
+.ws-response p { margin: 0; }
+.ws-response strong { font-weight: 625; }
+.ws-response-detail { max-width: 40em; }
+.ws-response p + p { margin-top: .26em; }
+.ws-feedback { gap: .87em; margin-top: .6em; color: var(--ws-subtle); }
+.ws-feedback .ws-icon { width: .94em; height: .94em; }
+.ws-down { transform: rotate(180deg); }
+.ws-bottom { padding-bottom: .72em; }
+.ws-composer {
+  display: flex;
+  align-items: center;
+  height: 3.15em;
+  padding: 0 .47em 0 .91em;
+  gap: .69em;
+  color: var(--ws-text);
+  background: rgb(var(--ws-composer) / calc(.96 + var(--panel-alpha, .5) * .04));
+  border: 1px solid var(--ws-line);
+  border-radius: clamp(20px, 2.85cqw, 26px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / .10);
+}
+.ws-placeholder { min-width: 0; color: var(--ws-subtle); }
+.ws-speech { flex: none; gap: .78em; margin-inline-start: auto; }
+.ws-speech i {
+  display: grid;
+  place-items: center;
+  width: 2.03em;
+  height: 2.03em;
+  border-radius: 50%;
+  color: var(--ws-action-ink);
+  background: var(--ws-action);
+}
+.ws-speech i .ws-icon { width: 1.17em; height: 1.17em; }
+.ws-caption { margin-top: .52em; color: var(--ws-caption-ink); font-size: clamp(9px, .68em, 12px); line-height: 1.4; text-align: center; }
+
+/* The no-script asset contains wide and compact captures of this same window. */
+html:not(.has-motion) .studio-exhibit:has(.static-preview) { container: workspace-still / inline-size; }
+html:not(.has-motion) .mobile-frame:has(.static-preview) { aspect-ratio: 1.52; }
+html:not(.has-motion) .static-preview { object-position: center top; }
+@container workspace-still (max-width: 585px) {
+  html:not(.has-motion) .mobile-frame:has(.static-preview) { aspect-ratio: 1.16; }
+  html:not(.has-motion) .static-preview { object-position: center bottom; }
+}
+
+@container workspace (max-width: 585px) {
+  .ws-surface { grid-template-columns: 1fr; }
+  .ws-sidebar, .ws-topic { display: none; }
+  .ws-mobile-brand { display: flex; }
+  .ws-turns, .ws-bottom { width: calc(100% - 2.3em); }
+  .ws-request { max-width: 87%; }
+}
+@container workspace (max-width: 400px) {
+  .ws-surface { font-size: clamp(13.5px, 3.95cqw, 15px); }
+  .ws-turns { gap: 1.1em; }
+  .ws-header-tools .ws-share span { display: none; }
+}
+@container workspace (max-height: 310px) {
+  .ws-titlebar { min-height: 2.55em; }
+  .ws-turns { gap: .92em; padding-block: .3em .55em; }
+  .ws-feedback { margin-top: .4em; }
+  .ws-bottom { padding-bottom: .42em; }
+  .ws-composer { height: 2.85em; }
+  .ws-recents { margin-top: .65em; }
+  .ws-caption { margin-top: .28em; }
+}
+@container workspace (max-height: 245px) {
+  .ws-turns, .ws-bottom { width: calc(100% - 1.65em); }
+  .ws-surface { font-size: 13px; }
+  .ws-response-detail, .ws-settings { display: none; }
+  .ws-turns { gap: .72em; padding-block: .24em .44em; }
+  .ws-composer { height: 2.7em; }
+}
+@container workspace (max-height: 180px) {
+  .ws-surface { font-size: 12px; }
+  .ws-response-detail, .ws-feedback { display: none; }
+  .ws-titlebar { min-height: 2.2em; }
+  .ws-chat { grid-template-rows: auto minmax(0, 1fr) auto; }
+}
+@container workspace (max-height: 135px) {
+  .ws-conversation { visibility: hidden; }
+}

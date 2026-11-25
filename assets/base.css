@@ -1,0 +1,48 @@
+:root {
+  --ink: #262326;
+  --paper: #f5f1e8;
+  --edge: clamp(1.15rem, 5vw, 5.5rem);
+  --serif: 'Songti SC', 'STSong', 'Noto Serif CJK SC', 'Yu Mincho', Georgia, serif;
+  --sans: 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-text-size-adjust: 100%;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+select,
+input {
+  font: inherit;
+}
+a {
+  color: inherit;
+}
+button,
+select {
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 3px solid #de704b;
+  outline-offset: 4px;
+}
+html:not([lang='en']):not(:has(:is(#english, [id$='-en']):target)) .en,
+html[lang='en'] .zh,
+html:has(:is(#english, [id$='-en']):target) .zh {
+  display: none !important;
+}
+[hidden] {
+  display: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
