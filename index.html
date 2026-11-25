@@ -13,11 +13,11 @@
     <link rel="preload" as="image" href="assets/art/rain.webp" fetchpriority="high" />
     <script src="assets/locale.js"></script>
     <link rel="stylesheet" href="assets/base.css" />
-    <link rel="stylesheet" href="assets/story.css" />
+    <link rel="stylesheet" href="assets/story.css?v=2" />
     <link rel="stylesheet" href="assets/workspace.css" />
     <link rel="stylesheet" href="assets/edition.css" />
     <script defer src="assets/workspace.js"></script>
-    <script defer src="assets/story.js"></script>
+    <script defer src="assets/story.js?v=2"></script>
   </head>
   <body>
     <span id="chinese" class="target"></span><span id="english" class="target"></span
@@ -118,7 +118,12 @@
                     <span class="zh">2.5D 视差</span><span class="en" lang="en">2.5D parallax</span>
                   </button>
                 </div>
-                <small class="mode-note"></small>
+                <small class="mode-note">
+                  <span class="mode-note-text"></span>
+                  <button class="media-retry" type="button" hidden>
+                    <span class="zh">重试</span><span class="en" lang="en">Retry</span>
+                  </button>
+                </small>
               </div>
             </div>
           </div>
@@ -194,7 +199,12 @@
                       <span class="zh">2.5D 视差</span><span class="en" lang="en">2.5D parallax</span>
                     </button>
                   </div>
-                  <small class="mode-note"></small>
+                  <small class="mode-note">
+                    <span class="mode-note-text"></span>
+                    <button class="media-retry" type="button" hidden>
+                      <span class="zh">重试</span><span class="en" lang="en">Retry</span>
+                    </button>
+                  </small>
                 </div>
               </div>
             </div>
@@ -410,6 +420,6 @@
         </div>
       </section>
     </main>
-    <p class="media-status" role="status" aria-live="polite"></p>
+    <p class="media-status" role="status" aria-live="polite" aria-atomic="true"></p>
   </body>
 </html>

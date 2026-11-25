@@ -53,7 +53,9 @@ After a new public release is available:
 
 ## Homepage artwork
 
-Rainy Corner, Moonlit Duel and Koi were created for Shimmer with ImageGen. Each work in `assets/art/` includes a still, a thumbnail, a looping animated WebP, a transparent foreground, a clean still background and a looping background for animated parallax. In the Moonlit Duel preview, the two fighters move independently. Open `?art=koi&mode=motion` or `?art=anime&mode=depth` for a particular treatment. Reduced motion starts with the still.
+Rainy Corner, Moonlit Duel and Koi were created for Shimmer with ImageGen. Each work in `assets/art/` includes a still, a thumbnail, a looping animated WebP, a transparent foreground, a clean still background and a looping background for animated parallax. In the Moonlit Duel preview, the two fighters move independently.
+
+The homepage keeps the current artwork visible until the next image is ready. Parallax can respond to the pointer using its still layers while the animated layers load. Narrow screens up to 760 CSS pixels and browsers reporting a slow connection or data-saving preference use the smaller files in `assets/art/compact/`. Rain and Koi share their native-size standalone loops across both sizes. Open `?art=koi&mode=motion` or `?art=anime&mode=depth` for a particular treatment. Reduced motion starts with the still.
 
 The opening illustrates a ChatGPT conversation. Shimmer themes the official Codex desktop app. [ChatGPT interface reference](https://learn.chatgpt.com/docs/quickstart)
 

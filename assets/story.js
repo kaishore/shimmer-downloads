@@ -71,41 +71,56 @@
     edition = q('#download'),
     faq = q('#faq');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const connection = navigator.connection;
+  const compactArtwork = matchMedia('(max-width: 760px)').matches ||
+    connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType);
   const english = () => root.lang === 'en';
   let currentArt = 'rain',
     currentMode = 'still',
-    desiredArt = currentArt,
-    desiredMode = currentMode;
+    displayedUrl = 'assets/art/rain.webp';
+  let pending = null,
+    failed = null;
   const sampled = new Map();
   let crop = works[currentArt].focus,
     clarity = 45,
     usePalette = false,
     selectedCrop = false;
-  let generation = 0,
-    statusTimer,
-    paintId,
+  let paintId,
     geometry,
     lastProgress = -1,
     focusAfterLaunch = false;
   let playback = null,
     lastPaintTime = 0;
-  const assets = new Map();
+  const loading = new Map();
+  const previouslyDecoded = new Set();
   function decode(url) {
-    if (!assets.has(url)) {
-      const image = new Image();
-      image.src = url;
-      const ready = image.decode().catch((error) => {
-        assets.delete(url);
-        throw error;
-      });
-      assets.set(url, ready);
-    }
-    return assets.get(url);
+    if (loading.has(url)) return loading.get(url).ready;
+    const image = new Image();
+    image.src = url;
+    const ready = image.decode().then(() => {
+      previouslyDecoded.add(url);
+      return image;
+    }).finally(() => {
+      if (loading.get(url)?.image === image) loading.delete(url);
+    });
+    loading.set(url, { image, ready });
+    return ready;
   }
-  function layers(id, mode) {
-    const base = 'assets/art/' + id;
+  function discardOtherLoads(files) {
+    const needed = new Set(files.map(([url]) => url));
+    for (const [url, entry] of loading) {
+      if (!needed.has(url)) {
+        loading.delete(url);
+        entry.image.removeAttribute('src');
+      }
+    }
+  }
+  function layers(id, mode, animate = !reduced.matches) {
+    // Rain and Koi have a single native-size loop shared by both layouts.
+    const useCompact = compactArtwork && (mode === 'depth' || (mode === 'motion' && id === 'anime'));
+    const directory = useCompact ? 'assets/art/compact/' : 'assets/art/';
+    const base = directory + id;
     if (mode === 'depth') {
-      const animate = !reduced.matches;
       return [
         [base + (animate ? '-back-motion.webp' : '-back.webp'), 'back'],
         [base + (animate && works[id].animatedForeground ? '-front-motion.webp' : '-front.webp'), 'front'],
@@ -113,20 +128,11 @@
     }
     return [[base + (mode === 'motion' ? '-motion' : '') + '.webp', '']];
   }
-  function announce(zh, en) {
-    const live = q('.media-status');
-    clearTimeout(statusTimer);
-    live.textContent = english() ? en : zh;
-    statusTimer = setTimeout(() => {
-      live.textContent = '';
-    }, 3900);
-  }
   // The endpoint colours in the preview come from the actual local image.
   // Keep the art-directed defaults available if sampling is unavailable.
   function sampleColors(id) {
     if (sampled.has(id)) return;
-    const image = new Image();
-    image.src = layers(id, 'still')[0][0];
+    const image = q('#art-cover [data-art="' + id + '"] img');
     const task = image
       .decode()
       .then(() => {
@@ -165,80 +171,155 @@
     q('.story-invitation .en').textContent = work.invitation[1];
     q('.studio-lede .zh').textContent = work.studio[0];
     q('.studio-lede .en').textContent = work.studio[1];
+    renderControls();
+    measure();
+    document.title = english()
+      ? 'Shimmer · The pictures you love, inside Codex'
+      : '浮光 Shimmer · 把喜欢的画面带进 Codex';
+  }
+  function renderControls() {
+    const art = pending?.art ?? currentArt;
+    const mode = pending?.mode ?? currentMode;
+    const work = works[currentArt];
+    const locale = english() ? 1 : 0;
     all('[data-art]').forEach((button) => {
-      const pressed = button.dataset.art === currentArt;
-      button.setAttribute('aria-pressed', String(pressed));
-      const text = button.querySelector(english() ? '.en' : '.zh').textContent;
-      button.setAttribute('aria-label', text);
-      button.title = text;
+      button.setAttribute('aria-pressed', String(button.dataset.art === art));
+      const label = button.querySelector(locale ? '.en' : '.zh').textContent;
+      button.setAttribute('aria-label', label);
+      button.title = label;
     });
     all('[data-mode]').forEach((button) =>
-      button.setAttribute('aria-pressed', String(button.dataset.mode === currentMode)),
+      button.setAttribute('aria-pressed', String(button.dataset.mode === mode)),
     );
     const notes = {
       still: ['', ''],
       motion: work.loop,
       depth: reduced.matches ? ['移动鼠标或左右拖动画面。', 'Move the pointer or drag the picture.'] : work.depth,
     };
+    let message = notes[currentMode][locale];
+    if (pending) {
+      const loading = {
+        still: ['正在载入画面…', 'Loading artwork…'],
+        motion: ['正在载入动图…', 'Loading animation…'],
+        depth: currentArt === art && currentMode === 'depth'
+          ? ['可以拖动了，动效载入中…', 'Drag now · loading motion…']
+          : ['正在准备视差…', 'Preparing parallax…'],
+      };
+      message = loading[mode][locale];
+    } else if (failed) {
+      message = ['载入失败。', 'Couldn’t load.'][locale];
+    }
+    all('.art-stack').forEach((stack) => stack.setAttribute('aria-busy', String(Boolean(pending))));
     all('.mode-note').forEach((note) => {
-      note.textContent = notes[currentMode][english() ? 1 : 0];
+      note.toggleAttribute('data-loading', Boolean(pending));
+      // An earlier cached homepage can still load this script after a Pages update.
+      (note.querySelector('.mode-note-text') || note).textContent = message;
+      const retry = note.querySelector('.media-retry');
+      if (retry) retry.hidden = !failed;
     });
-    measure();
-    document.title = english()
-      ? 'Shimmer · The pictures you love, inside Codex'
-      : '浮光 Shimmer · 把喜欢的画面带进 Codex';
+    const live = q('.media-status');
+    const status = pending || failed ? message : '';
+    if (live.textContent !== status) live.textContent = status;
   }
   function resetDepth() {
     for (const name of ['front-x', 'front-y', 'back-x', 'back-y'])
       journey.style.setProperty('--' + name, '0px');
   }
-  async function choose(art, mode, refresh = false) {
-    if (!(art in works) || !modes.includes(mode)) return;
-    desiredArt = art;
-    desiredMode = mode;
-    const revision = ++generation;
-    if (!refresh && art === currentArt && mode === currentMode) return;
-    const files = layers(art, mode);
-    try {
-      await Promise.all(files.map(([url]) => decode(url)));
-    } catch {
-      if (revision === generation) {
-        desiredArt = currentArt;
-        desiredMode = currentMode;
-        announce('画面暂未载入，点选后可重试。', 'The artwork could not load. Select it again to retry.');
-      }
-      return;
-    }
-    if (revision !== generation) return;
-    for (const stack of all('.art-stack')) {
+  function present(art, mode, files, images) {
+    if (displayedUrl === files[0][0]) return;
+    const keepDepth = currentMode === 'depth' && mode === 'depth' && art === currentArt;
+    all('.art-stack').forEach((stack, index) => {
       const exposure = document.createElement('div');
       exposure.className = 'exposure ' + mode;
-      for (const [url, cls] of files) {
-        const image = new Image();
+      files.forEach(([, cls], i) => {
+        // A still foreground can belong to both exposures during the crossfade.
+        const image = index === 0 && !images[i].isConnected ? images[i] : images[i].cloneNode();
         image.className = 'art-layer ' + cls;
         image.alt = '';
-        image.src = url;
         exposure.append(image);
+      });
+      if (reduced.matches) {
+        exposure.classList.add('active');
+        stack.replaceChildren(exposure);
+      } else {
+        const previous = [...stack.children];
+        stack.append(exposure);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          exposure.classList.add('active');
+          setTimeout(() => previous.forEach((child) => child.remove()), 620);
+        }));
       }
-      stack.append(exposure);
-      requestAnimationFrame(() => requestAnimationFrame(() => exposure.classList.add('active')));
-      const previous = [...stack.children].filter((child) => child !== exposure);
-      setTimeout(() => previous.forEach((child) => child.remove()), reduced.matches ? 0 : 620);
-    }
+    });
     if (art !== currentArt && !selectedCrop) crop = works[art].focus;
+    displayedUrl = files[0][0];
     currentArt = art;
     currentMode = mode;
+    if (!keepDepth) resetDepth();
     sampleColors(art);
-    resetDepth();
     renderCopy();
     applySettings();
   }
+  async function choose(art, mode) {
+    if (!Object.hasOwn(works, art) || !modes.includes(mode)) return;
+    const files = layers(art, mode);
+    const key = files[0][0];
+    if (pending?.key === key) return;
+    failed = null;
+    if (displayedUrl === key) {
+      pending = null;
+      discardOtherLoads([]);
+      renderControls();
+      return;
+    }
+    const request = { art, mode, key };
+    pending = request;
+    renderControls();
+
+    // A small pair of still planes makes parallax usable while its loops arrive.
+    // When changing to another artwork's loop, its poster can appear first.
+    let preview = [];
+    let previewMode = 'still';
+    if (mode === 'depth' && !reduced.matches) {
+      previewMode = 'depth';
+      preview = layers(art, mode, false);
+    } else if (mode === 'motion' && art !== currentArt) {
+      preview = layers(art, 'still');
+    }
+    discardOtherLoads([...files, ...preview]);
+    const seenTarget = files.every(([url]) => previouslyDecoded.has(url));
+    if (preview.length && displayedUrl !== preview[0][0] && !seenTarget) {
+      Promise.all(preview.map(([url]) => decode(url))).then((images) => {
+        if (pending === request || failed === request) present(art, previewMode, preview, images);
+      }, () => {}); // An optional preview must never block the selected artwork.
+    }
+    let images;
+    try {
+      images = await Promise.all(files.map(([url]) => decode(url)));
+    } catch {
+      if (pending === request) {
+        pending = null;
+        failed = request;
+        renderControls();
+      }
+      return;
+    }
+    if (pending !== request) return;
+    pending = null;
+    present(art, mode, files, images);
+  }
   all('[data-art]').forEach((button) =>
-    button.addEventListener('click', () => choose(button.dataset.art, desiredMode)),
+    button.addEventListener('click', () => choose(button.dataset.art, pending?.mode ?? currentMode)),
   );
   all('[data-mode]').forEach((button) =>
-    button.addEventListener('click', () => choose(desiredArt, button.dataset.mode)),
+    button.addEventListener('click', () => choose(pending?.art ?? currentArt, button.dataset.mode)),
   );
+  all('.media-retry').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!failed) return;
+      button.closest('.mode-rail').querySelector('[data-mode="' + failed.mode + '"]').focus({ preventScroll: true });
+      choose(failed.art, failed.mode);
+    });
+  });
   function applySettings() {
     const work = works[currentArt];
     q('#crop').value = crop;
@@ -425,8 +506,8 @@
   window.addEventListener('pageshow', measure);
   document.fonts?.ready.then(measure);
   reduced.addEventListener('change', () => {
-    if (reduced.matches) choose(desiredArt, 'still');
-    else if (desiredMode === 'depth') choose(desiredArt, 'depth', true);
+    if (reduced.matches) choose(pending?.art ?? currentArt, 'still');
+    else if ((pending?.mode ?? currentMode) === 'depth') choose(pending?.art ?? currentArt, 'depth');
     measure();
   });
 })();

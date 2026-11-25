@@ -66,23 +66,43 @@ readme = (root / "README.md").read_text(encoding="utf-8")
 assert all(link in readme for link in packages[0]), "README downloads are out of date."
 gallery = ("rain", "anime", "koi")
 assert pages["index.html"].artwork_buttons == {name: 2 for name in gallery}, "Artwork picker mismatch"
+
+
+def verify_loop(path, transparent=False):
+    animation = list(chunks(path))
+    header = next((payload for tag, payload in animation if tag == b"ANIM"), b"")
+    assert header[4:6] == bytes(2), f"Animation must loop: {path}"
+    durations = [int.from_bytes(frame[12:15], "little") for tag, frame in animation if tag == b"ANMF"]
+    assert len(durations) > 1 and min(durations) > 0, f"Expected timed animation frames: {path}"
+    if transparent:
+        flags = next(payload[0] for tag, payload in animation if tag == b"VP8X")
+        assert flags & 0x10, f"Expected a transparent animated foreground: {path}"
+    return durations
+
+
+art = root / "assets/art"
 for name in gallery:
-    directory = root / "assets/art"
-    for suffix in ("", "-small", "-back"):
-        tags = [tag for tag, _ in chunks(directory / f"{name}{suffix}.webp")]
+    for suffix in ("", "-small"):
+        tags = [tag for tag, _ in chunks(art / f"{name}{suffix}.webp")]
         assert tags and b"ANIM" not in tags, f"Expected a still image: {name}{suffix}"
-    foreground = dict(chunks(directory / f"{name}-front.webp"))
-    assert b"ALPH" in foreground or b"VP8L" in foreground, f"Missing alpha: {name}"
-    loops = ["-motion", "-back-motion"]
-    if name == "anime":
-        loops.append("-front-motion")
-    for suffix in loops:
-        file = directory / f"{name}{suffix}.webp"
-        animation = list(chunks(file))
-        header = next((payload for tag, payload in animation if tag == b"ANIM"), b"")
-        assert header[4:6] == bytes(2), f"Animation must loop: {file.name}"
-        assert sum(tag == b"ANMF" for tag, _ in animation) > 1, f"Static loop: {file.name}"
-        if suffix == "-front-motion":
-            flags = next(payload[0] for tag, payload in animation if tag == b"VP8X")
-            assert flags & 0x10, f"Expected a transparent animated foreground: {file.name}"
-print("Verified bilingual routes, release parity, and still, loop and animated parallax assets for three artworks.")
+    desktop_timing = {}
+    for directory in (art, art / "compact"):
+        back = dict(chunks(directory / f"{name}-back.webp"))
+        front = dict(chunks(directory / f"{name}-front.webp"))
+        assert b"ANIM" not in back and b"ANIM" not in front, f"Expected still preview planes: {name}"
+        assert b"ALPH" in front or b"VP8L" in front, f"Missing alpha: {name}"
+        # Rain and Koi share their native-size loop across the two display sizes.
+        loop_dir = directory if name == "anime" else art
+        loops = {"motion": loop_dir / f"{name}-motion.webp", "back": directory / f"{name}-back-motion.webp"}
+        if name == "anime":
+            loops["front"] = directory / f"{name}-front-motion.webp"
+        timings = {kind: verify_loop(path, kind == "front") for kind, path in loops.items()}
+        if "front" in timings:
+            assert timings["back"] == timings["front"], f"Parallax planes out of sync: {directory}/{name}"
+        if directory == art:
+            desktop_timing = timings
+        else:
+            assert timings == desktop_timing, f"Compact version changed playback timing: {name}"
+        depth_bytes = loops["back"].stat().st_size + loops.get("front", directory / f"{name}-front.webp").stat().st_size
+        assert depth_bytes <= (5_000_000 if directory == art else 3_500_000), f"Parallax transfer too large: {directory}/{name}"
+print("Verified bilingual routes, downloads, and both sizes of all three artworks, including animation timing and transfer budgets.")
